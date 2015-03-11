@@ -3,6 +3,11 @@
 interface PageInterface
 {
 	/**
+	 * @return int
+	 */
+	public function getId();
+
+	/**
 	 * Get the permalink of the page.
 	 *
 	 * @param string $locale
@@ -33,37 +38,6 @@ interface PageInterface
 	 * @return $this
 	 */
 	public function setTitle($title);
-
-	/**
-	 * Get the description of the page.
-	 *
-	 * @return string
-	 */
-	public function getDescription();
-
-	/**
-	 * Set the description for the page.
-	 *
-	 * @param string $description
-	 * @return $this
-	 */
-	public function setDescription($description);
-
-	/**
-	 * Get the keywords of the page.
-	 *
-	 * @return string
-	 */
-	public function getKeywords();
-
-	/**
-	 * Set the keywords for the page.
-	 *
-	 * @param string $keywords
-	 * @param string|null $locale
-	 * @return $this
-	 */
-	public function setKeywords($keywords);
 
 	/**
 	 * @return bool

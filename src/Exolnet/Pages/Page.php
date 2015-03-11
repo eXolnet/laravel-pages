@@ -1,11 +1,12 @@
 <?php namespace Exolnet\Pages;
 
 use App;
+use Dimsav\Translatable\Translatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingTrait;
 
 class Page extends Model implements PageInterface {
-	use SoftDeletingTrait;
+	use SoftDeletingTrait, Translatable;
 
 	/**
 	 * The database table used by the model.
@@ -22,33 +23,32 @@ class Page extends Model implements PageInterface {
 	protected $fillable = ['permalink', 'title', 'description', 'keywords'];
 
 	/**
-	 * Validation rules for the model validation.
-	 *
-	 * @var array
-	 */
-	// protected $rules = [
-	// 	'permalink'   => 'required|size:255',
-	// 	'title'       => 'required|size:255',
-	// 	'description' => 'size:255',
-	// 	'keywords'    => 'size:255',
-	// ];
-
-	/**
 	 * Specifies which attributes are translated.
 	 *
 	 * @var array
 	 */
 	public $translatedAttributes = ['permalink', 'title', 'description', 'keywords'];
 
+	//==========================================================================
+	// Getters & Setters
+	//==========================================================================
+
+	/**
+	 * @return int
+	 */
+	public function getId()
+	{
+		return $this->id;
+	}
+
 	/**
 	 * Get the permalink of the page.
 	 *
-	 * @param string $locale
 	 * @return string
 	 */
-	public function getPermalink($locale = null)
+	public function getPermalink()
 	{
-		return $this->translate($locale)->permalink;
+		return $this->getTranslation()->getPermalink();
 	}
 
 	/**
@@ -59,7 +59,7 @@ class Page extends Model implements PageInterface {
 	 */
 	public function setPermalink($permalink)
 	{
-		$this->permalink = $permalink;
+		$this->getTranslation()->setPermalink($permalink);
 
 		return $this;
 	}
@@ -67,12 +67,11 @@ class Page extends Model implements PageInterface {
 	/**
 	 * Get the title of the page.
 	 *
-	 * @param string|null $locale
 	 * @return string
 	 */
-	public function getTitle($locale = null)
+	public function getTitle()
 	{
-		return $this->translate($locale)->title;
+		return $this->getTranslation()->getTitle();
 	}
 
 	/**
@@ -83,56 +82,48 @@ class Page extends Model implements PageInterface {
 	 */
 	public function setTitle($title)
 	{
-		$this->title = $title;
+		$this->getTranslation()->setTitle($title);
 
 		return $this;
 	}
 
 	/**
-	 * Get the description of the page.
+	 * Get the content of the page.
 	 *
 	 * @return string
 	 */
-	public function getDescription()
+	public function getContent()
 	{
-		return $this->description;
+		return $this->getTranslation()->getContent();
 	}
 
 	/**
-	 * Set the description for the page.
+	 * Set the content for the page.
 	 *
-	 * @param string $description
+	 * @param string $content
 	 * @return $this
 	 */
-	public function setDescription($description)
+	public function setContent($content)
 	{
-		$this->description = $description;
+		$this->getTranslation()->setContent($content);
 
 		return $this;
 	}
 
 	/**
-	 * Get the keywords of the page.
-	 *
 	 * @return string
 	 */
-	public function getKeywords()
+	public function getBasename()
 	{
-		return $this->keywords;
+		return $this->getTranslation()->getBasename();
 	}
 
 	/**
-	 * Set the keywords for the page.
-	 *
-	 * @param string $keywords
-	 * @param string|null $locale
-	 * @return $this
+	 * @return string
 	 */
-	public function setKeywords($keywords)
+	public function getFilename()
 	{
-		$this->keywords = $keywords;
-
-		return $this;
+		return $this->getTranslation()->getFilename();
 	}
 
 	/**
@@ -154,25 +145,37 @@ class Page extends Model implements PageInterface {
 		return $this;
 	}
 
+	//==========================================================================
+	// Translations
+	//==========================================================================
+
 	/**
-	 * @param string $permalink
-	 * @param string|null $locale
-	 * @return bool
+	 * @return \Illuminate\Database\Eloquent\Collection
 	 */
-	public function hasPermalink($permalink, $locale = null)
+	public function getTranslations()
 	{
-		$locale = $this->getLocale($locale);
-		return $this->translate($locale)->permalink === $permalink;
+		return $this->translations;
 	}
 
 	/**
-	 * @param string|null $locale
-	 * @return string
+	 * @return \stdClass
 	 */
-	protected function getLocale($locale = null)
+	public function getTranslationsAsObject()
 	{
-		return $locale ?: App::getLocale();
+		$translations = new \stdClass;
+
+		foreach ($this->translations as $translation) {
+			$locale = $translation->locale;
+
+			$translations->$locale = $translation;
+		}
+
+		return $translations;
 	}
+
+	//==========================================================================
+	// Scopes
+	//==========================================================================
 
 	/**
 	 * Limit the query to page having a specified permalink.

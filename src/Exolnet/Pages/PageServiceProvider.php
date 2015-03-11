@@ -33,7 +33,9 @@ class PagesServiceProvider extends IlluminateServiceProvider {
 	{
 		$this->app->bind('pages.service', function(Application $app) {
 			return new PageService(
-				$app->make('pages.repository')
+				$app->make('pages.repository'),
+				$app->make('cache.store'),
+				$app
 			);
 		});
 	}

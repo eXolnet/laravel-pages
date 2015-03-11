@@ -1,14 +1,27 @@
 <?php namespace Exolnet\Pages;
 
+use Illuminate\Cache\CacheManager;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Validator;
 
 class PageService {
 	/**
 	 * @var \Exolnet\Pages\PageRepository
 	 */
 	protected $pageRepository;
+
+	/**
+	 * @var \Illuminate\Cache\CacheManager
+	 */
+	private $cacheManager;
+
+	/**
+	 * @var \Illuminate\Foundation\Application
+	 */
+	private $app;
 
 	/**
 	 * @var \Illuminate\Database\Eloquent\Collection
@@ -19,21 +32,183 @@ class PageService {
 	 * Constructor.
 	 *
 	 * @param \Exolnet\Pages\PageRepository $pageRepository
+	 * @param \Illuminate\Cache\CacheManager $cacheManager
+	 * @param \Illuminate\Foundation\Application $app
 	 */
-	public function __construct(PageRepository $pageRepository)
+	public function __construct(PageRepository $pageRepository, CacheManager $cacheManager, Application $app)
 	{
 		$this->pageRepository = $pageRepository;
+		$this->cacheManager = $cacheManager;
+		$this->app = $app;
+	}
+
+	//==========================================================================
+	// Page Fetch
+	//==========================================================================
+
+	/**
+	 * @return \Illuminate\Database\Eloquent\Collection
+	 */
+	public function getPages()
+	{
+		if ( ! $this->pages) {
+			$this->pages = $this->pageRepository->getPages();
+		}
+
+		return $this->pages;
+	}
+
+	/**
+	 * @return \Illuminate\Database\Eloquent\Collection
+	 */
+	public function getCachedPages()
+	{
+		return $this->cacheManager->remember('routes.pages', 5, function() {
+			return $this->getPages();
+		});
+	}
+
+	/**
+	 * Find a page by it's primary key.
+	 * @param $id
+	 * @return \Exolnet\Pages\Page
+	 */
+	public function findById($id)
+	{
+		return $this->pageRepository->findById($id);
+	}
+
+	/**
+	 * Find a page by it's permalink in the current application's locale.
+	 *
+	 * @param string $permalink
+	 * @param string $locale
+	 * @return \Exolnet\Pages\Page
+	 */
+	public function findByPermalink($permalink, $locale = null)
+	{
+		return $this->getCachedPages()->first(function($key, Page $page) use ($permalink, $locale) {
+			return $page->getTranslation($locale)->getPermalink() === $permalink;
+		});
+	}
+
+	public function loadPageContent(Page $page)
+	{
+		$this->pageRepository->retrievePageContent($page);
+
+		return $this;
+	}
+
+	//==========================================================================
+	// Page creation and update
+	//==========================================================================
+
+	public function getSupportedLocales()
+	{
+		// TODO-AD: Rendre ceci configurable <adeschambeault@exolnet.com>
+		return ['fr'];
 	}
 
 	public function rules()
 	{
-		// TODO-TR: Validate that permalink is unique <trochette@exolnet.com>
-		return rulesRequiredLanguage([
-			'translation.$lang.permalink'   => 'required|max:255|regex:/^[a-z0-9-\/]+$/',
-			'translation.$lang.title'       => 'required|max:255',
-			'translation.$lang.locale'      => 'required',
-		], ['en', 'fr']);
+		$rules = [];
+
+		foreach ($this->getSupportedLocales() as $locale) {
+			$rules += [
+				'translation.'. $locale .'.permalink' => 'required|max:255|regex:/^[a-z0-9-\/]+$/',
+				'translation.'. $locale .'.title'     => 'required|max:255',
+				'translation.'. $locale .'.locale'    => 'required',
+			];
+		}
+
+		return $rules;
 	}
+
+	/**
+	 * @param array $data
+	 * @return Page
+	 */
+	public function create(array $data)
+	{
+		$this->validateUpdate($data);
+
+		$page = new Page();
+
+		$this->fillPage($page, $data);
+		$this->pageRepository->storePage($page);
+
+		$this->clearCache();
+
+		return $page;
+	}
+
+	/**
+	 * @param Page $page
+	 * @param array $data
+	 * @return $this
+	 */
+	public function update(Page $page, array $data)
+	{
+		$this->validateUpdate($data);
+
+		$this->pageRepository->destroyPageContent($page);
+
+		$this->fillPage($page, $data);
+
+		$this->pageRepository
+			->updatePage($page)
+			->storePageContent($page);
+
+		$this->clearCache();
+
+		return $this;
+	}
+
+	/**
+	 * @param \Exolnet\Pages\Page $page
+	 * @return $this
+	 */
+	public function delete(Page $page)
+	{
+		$this->pageRepository
+			->destroyPage($page)
+			->destroyPageContent($page);
+
+		return $this;
+	}
+
+	protected function validateUpdate(array $data)
+	{
+		$validator = Validator::make($data, $this->rules());
+
+		if ($validator->fails()) {
+			throw new PageValidationException(
+				$validator->errors()->all()
+			);
+		}
+	}
+
+	protected function fillPage(Page $page, array $data)
+	{
+		$translations = (array)Arr::get($data, 'translations');
+		$translations = Arr::only($translations, $this->getSupportedLocales());
+
+		foreach ($translations as $locale => $translation) {
+			$this->fillPageTranslation($page->getTranslation($locale), $translation);
+		}
+	}
+
+	protected function fillPageTranslation(PageTranslation $translation, array $data)
+	{
+		$translation
+			->setTitle($data['title'])
+			->setPermalink($data['permalink'])
+			->setContent($data['content']);
+	}
+
+	//==========================================================================
+	// Routes management
+	//==========================================================================
 
 	/**
 	 * Register all pages to the Laravel's router
@@ -63,51 +238,28 @@ class PageService {
 		)->where('permalink', '(' . implode('|', $permalinks) . ')');
 	}
 
-	/**
-	 * @return Collection
-	 */
-	public function getPages()
-	{
-		if ( ! $this->pages) {
-			try {
-				$this->pages = $this->pageRepository->with('translations')->get();
-			} catch (QueryException $e) {
-				$this->pages = new Collection;
-			}
-		}
+	//==========================================================================
+	// Cache Management
+	//==========================================================================
 
-		return $this->pages;
-	}
-
-	public function getCachedPages()
+	public function getCacheKey()
 	{
-		return Cache::remember('routes.pages', 5, function() {
-			return $this->getPages();
-		});
+		return 'routes.pages';
 	}
 
 	/**
-	 * @param $key
-	 * @return Page
+	 * @return $this
 	 */
-	public function findByKey($key)
+	public function clearCache()
 	{
-		return $this->getCachedPages()->find($key);
+		$this->cacheManager->forget($this->getCacheKey());
+
+		return $this;
 	}
 
-	/**
-	 * Find a page by it's permalink in the current application's locale.
-	 *
-	 * @param string $permalink
-	 * @param string $locale
-	 * @return Page
-	 */
-	public function findByPermalink($permalink, $locale = null)
-	{
-		return $this->getCachedPages()->first(function($key, $page) use ($permalink, $locale) {
-			return $page->translate($locale)->permalink === $permalink;
-		});
-	}
+	//==========================================================================
+	// URL helper
+	//==========================================================================
 
 	/**
 	 * @param        $permalink
@@ -118,9 +270,9 @@ class PageService {
 	public function permalink($permalink, $locale = null, $from_locale = 'en')
 	{
 		$page   = $this->findByPermalink($permalink, $from_locale);
-		$locale = $locale ?: App::getLocale();
+		$locale = $locale ?: $this->app->getLocale();
 
-		return $page !== null ? $locale.'/'.$page->translate($locale)->permalink : null;
+		return $page !== null ? $locale.'/'.$page->getTranslation($locale)->getPermalink() : null;
 	}
 
 	/**
@@ -150,77 +302,5 @@ class PageService {
 	{
 		$page = $this->findByPermalink($permalink, 'en');
 		return $page !== null ? $this->link_to($permalink, $page->getTitle(), $attributes, $secure) : null;
-	}
-
-	/**
-	 * @param array $data
-	 * @return Page
-	 */
-	public function create(array $data)
-	{
-		$page = new Page();
-
-		$this->update($page, $data);
-
-		Cache::forget('routes.pages');
-
-		return $page;
-	}
-
-	/**
-	 * @param Page  $page
-	 * @param array $data
-	 */
-	public function update(Page $page, array $data)
-	{
-		$data = Arr::mapNullOnEmpty($data);
-
-		$this->validateUpdate($data);
-
-		$locales = Route::getSupportedLocales();
-		$translations = array_get($data, 'translation', []);
-
-		$oldFilenames = [];
-		$newFilenames = [];
-
-		DB::transaction(function() use ($page, $data, $locales, $translations, &$oldFilenames, &$newFilenames) {
-			foreach ($locales as $locale) {
-				$oldFilenames[] = $page->getFilename($locale);
-
-				$page->translate($locale)->fill(array_get($translations, $locale, []));
-
-				$newFilenames[] = $page->getFilename($locale);
-			}
-
-			$page->save();
-		});
-
-		foreach ($locales as $locale) {
-			$translation = array_get($translations, $locale, []);
-			$content     = array_get($translation, 'content');
-
-			$page->setContent($content, $locale);
-		}
-
-		// Get rid of renamed files
-		$removedFiles = array_diff($oldFilenames, $newFilenames);
-		foreach ($removedFiles as $removedFile) {
-			if ($this->filesystem->exists($removedFile)) {
-				$this->filesystem->delete($removedFile);
-			}
-		}
-
-		Cache::forget('routes.pages');
-	}
-
-	protected function validateUpdate(array $data)
-	{
-		$validator = Validator::make($data, $this->rules());
-
-		if ($validator->fails()) {
-			throw new ServiceValidationException(
-				$validator->errors()->all()
-			);
-		}
 	}
 }
