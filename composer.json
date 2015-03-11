@@ -1,0 +1,19 @@
+{
+	"name": "exolnet/laravel-pages",
+	"description": "CMS like page helper.",
+	"license": "MIT",
+	"require": {
+		"php": ">=5.4.0",
+		"illuminate/support": "~4.2",
+		"illuminate/database": "~4.2"
+	},
+	"require-dev": {
+		"phpspec/phpspec": "~2.0",
+		"phpunit/phpunit": "~3.7"
+	},
+	"autoload": {
+		"psr-0": {
+			"Exolnet\\Pages": "src/"
+		}
+	}
+}
