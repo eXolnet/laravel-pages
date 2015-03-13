@@ -106,7 +106,7 @@ class PageService {
 	public function getSupportedLocales()
 	{
 		// TODO-AD: Rendre ceci configurable <adeschambeault@exolnet.com>
-		return ['fr'];
+		return \Config::get('pages.supported_locales');
 	}
 
 	public function rules()
@@ -137,6 +137,8 @@ class PageService {
 		$this->fillPage($page, $data);
 		$this->pageRepository->storePage($page);
 
+		$this->saveTranslations($page);
+
 		$this->clearCache();
 
 		return $page;
@@ -159,9 +161,24 @@ class PageService {
 			->updatePage($page)
 			->storePageContent($page);
 
+		$this->saveTranslations($page);
+
 		$this->clearCache();
 
 		return $this;
+	}
+
+	/**
+	 * @param \Exolnet\Pages\Page $page
+	 * @param array               $data
+	 */
+	public function saveTranslations(Page $page)
+	{
+		foreach ($this->getSupportedLocales() as $locale) {
+			$page->translate($locale)->locale = $locale;
+			$page->translate($locale)->page_id = $page->getId();
+			$page->translate($locale)->save();
+		}
 	}
 
 	/**
@@ -190,7 +207,7 @@ class PageService {
 
 	protected function fillPage(Page $page, array $data)
 	{
-		$translations = (array)Arr::get($data, 'translations');
+		$translations = (array)Arr::get($data, 'translation');
 		$translations = Arr::only($translations, $this->getSupportedLocales());
 
 		foreach ($translations as $locale => $translation) {
@@ -281,7 +298,7 @@ class PageService {
 	 * @param null  $secure
 	 * @return string
 	 */
-	public function url($permalink, $parameters = array(), $secure = null)
+	public function url($permalink, $parameters = [], $secure = null)
 	{
 		return url($this->permalink($permalink), $parameters, $secure);
 	}
@@ -293,12 +310,12 @@ class PageService {
 	 * @param null  $secure
 	 * @return string
 	 */
-	public function link_to($permalink, $title = null, $attributes = array(), $secure = null)
+	public function link_to($permalink, $title = null, $attributes = [], $secure = null)
 	{
 		return link_to($this->permalink($permalink), $title, $attributes, $secure);
 	}
 
-	public function link_to_with_title($permalink, $attributes = array(), $secure = null)
+	public function link_to_with_title($permalink, $attributes = [], $secure = null)
 	{
 		$page = $this->findByPermalink($permalink, 'en');
 		return $page !== null ? $this->link_to($permalink, $page->getTitle(), $attributes, $secure) : null;

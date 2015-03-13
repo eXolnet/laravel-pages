@@ -6,7 +6,8 @@
 		"php": ">=5.4.0",
 		"illuminate/support": "~4.2",
 		"illuminate/database": "~4.2",
-		"illuminate/cache": "~4.2"
+		"illuminate/cache": "~4.2",
+		"dimsav/laravel-translatable": "~4.3"
 	},
 	"require-dev": {
 		"phpspec/phpspec": "~2.0",

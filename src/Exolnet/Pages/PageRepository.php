@@ -41,6 +41,13 @@ class PageRepository {
 	public function storePage(Page $page)
 	{
 		$page->save();
+
+		$locales = \Config::get('locales');
+		foreach($locales as $locale) {
+			$page->translate($locale)->page_id = $page->id;
+			$page->translate($locale)->save();
+		}
+
 		//$this->storePageContent($page);
 
 		return $this;
