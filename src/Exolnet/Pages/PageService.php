@@ -115,7 +115,7 @@ class PageService {
 
 		foreach ($this->getSupportedLocales() as $locale) {
 			$rules += [
-				'translation.'. $locale .'.permalink' => 'required|max:255|regex:/^[a-z0-9-\/]+$/',
+				'translation.'. $locale .'.permalink' => 'required|max:255|unique:page_translation,permalink|regex:/^[a-z0-9-\/]+$/',
 				'translation.'. $locale .'.title'     => 'required|max:255',
 				'translation.'. $locale .'.locale'    => 'required',
 			];
