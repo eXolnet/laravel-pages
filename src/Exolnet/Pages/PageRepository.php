@@ -48,7 +48,7 @@ class PageRepository {
 			$page->translate($locale)->save();
 		}
 
-		//$this->storePageContent($page);
+		$this->storePageContent($page);
 
 		return $this;
 	}
