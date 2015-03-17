@@ -101,6 +101,9 @@ class PageRepository {
 			if ($this->filesystem->exists($filename)) {
 				$content = $this->filesystem->get($filename);
 
+				$baseUrl = \URL::to('/');
+				$content = str_replace('%BASE_URL%', $baseUrl, $content);
+
 				$translation->setContent($content);
 			}
 		}
