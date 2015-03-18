@@ -31,6 +31,34 @@ class Page extends Model implements PageInterface, NodeUnorderedInterface {
 	 */
 	public $translatedAttributes = ['permalink', 'title', 'description', 'keywords'];
 
+	/**
+	 * The database table used by the NodeTrait.
+	 *
+	 * @var string
+	 */
+	protected $closure_table = 'page_closure';
+
+	/**
+	 * The ancestor column name in the closure table
+	 *
+	 * @var string
+	 */
+	protected $closure_ancestor_column = 'ancestor_id';
+
+	/**
+	 * The descendant column name in the closure table
+	 *
+	 * @var string
+	 */
+	protected $closure_descendant_column = 'descendant_id';
+
+	/**
+	 * The depth column name in the closure table
+	 *
+	 * @var string
+	 */
+	protected $closure_depth_column = 'depth';
+
 	//==========================================================================
 	// Getters & Setters
 	//==========================================================================
