@@ -26,6 +26,23 @@ class PageRepository {
 	}
 
 	/**
+	 * @param \Exolnet\Pages\Page $page
+	 * @return mixed
+	 */
+	public function getPagesWithoutDescendants(Page $page)
+	{
+		$pages = $page->getDescendants()->all();
+
+		array_push($pages, $page);
+
+		$pageIds = array_pluck($pages, 'id');
+
+		return Page::with('translations')
+			->whereNotIn('id', $pageIds)
+			->get();
+	}
+
+	/**
 	 * @param int $id
 	 * @return \Exolnet\Pages\Page
 	 */

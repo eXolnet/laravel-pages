@@ -1,14 +1,11 @@
 <?php namespace Exolnet\Pages;
 
-use ClosureTree\Models\NodeTrait;
-use ClosureTree\Models\NodeUnorderedInterface;
-use ClosureTree\Models\NodeUnorderedTrait;
+use ClosureTree\Models\NodeUnordered;
 use Dimsav\Translatable\Translatable;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingTrait;
 
-class Page extends Model implements PageInterface, NodeUnorderedInterface {
-	use SoftDeletingTrait, Translatable, NodeTrait, NodeUnorderedTrait;
+class Page extends NodeUnordered implements PageInterface {
+	use SoftDeletingTrait, Translatable;
 
 	/**
 	 * The database table used by the model.

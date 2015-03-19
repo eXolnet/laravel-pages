@@ -1,10 +1,9 @@
 <?php namespace Exolnet\Pages;
 
 use Illuminate\Cache\CacheManager;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
-use Illuminate\Support\Arr;
+use Illuminate\Support\Arr as Arr;
+use Exolnet\Core\Arr as ArrCore;
 use Illuminate\Support\Facades\Validator;
 
 class PageService {
@@ -69,6 +68,15 @@ class PageService {
 	}
 
 	/**
+	 * @param \Exolnet\Pages\Page $page
+	 * @return \Illuminate\Database\Eloquent\Collection
+	 */
+	public function getPagesWithoutDescendants(Page $page)
+	{
+		return $this->pageRepository->getPagesWithoutDescendants($page);
+	}
+
+	/**
 	 * Find a page by it's primary key.
 	 * @param $id
 	 * @return \Exolnet\Pages\Page
@@ -92,6 +100,10 @@ class PageService {
 		});
 	}
 
+	/**
+	 * @param \Exolnet\Pages\Page $page
+	 * @return $this
+	 */
 	public function loadPageContent(Page $page)
 	{
 		$this->pageRepository->retrievePageContent($page);
@@ -103,19 +115,26 @@ class PageService {
 	// Page creation and update
 	//==========================================================================
 
+	/**
+	 * @return mixed
+	 */
 	public function getSupportedLocales()
 	{
 		// TODO-AD: Rendre ceci configurable <adeschambeault@exolnet.com>
 		return \Config::get('pages.supported_locales');
 	}
 
-	public function rules()
+	/**
+	 * @param \Exolnet\Pages\Page $page
+	 * @return array
+	 */
+	public function rules(Page $page = null)
 	{
 		$rules = [];
 
 		foreach ($this->getSupportedLocales() as $locale) {
 			$rules += [
-				'translation.'. $locale .'.permalink' => 'required|max:255|unique:page_translation,permalink|regex:/^[a-z0-9-\/]+$/',
+				'translation.'. $locale .'.permalink' => 'required|max:255|unique:page_translation,permalink' . ($page ? ',' . $page->getId() : '') . '|regex:/^[a-z0-9-\/]+$/',
 				'translation.'. $locale .'.title'     => 'required|max:255',
 				'translation.'. $locale .'.locale'    => 'required',
 			];
@@ -130,7 +149,9 @@ class PageService {
 	 */
 	public function create(array $data)
 	{
-		$this->validateUpdate($data);
+		$data = ArrCore::mapNullOnEmpty($data);
+
+		$this->validateUpdate($data, $this->rules());
 
 		$page = new Page();
 
@@ -138,6 +159,12 @@ class PageService {
 		$this->pageRepository->storePage($page);
 
 		$this->saveTranslations($page);
+
+		$parentId = array_get($data, 'parent_id', 0);
+		$this->managePageClosure(
+			$page,
+			$parentId
+		);
 
 		$this->clearCache();
 
@@ -151,7 +178,9 @@ class PageService {
 	 */
 	public function update(Page $page, array $data)
 	{
-		$this->validateUpdate($data);
+		$data = ArrCore::mapNullOnEmpty($data);
+
+		$this->validateUpdate($data, $this->rules($page));
 
 		$this->pageRepository->destroyPageContent($page);
 
@@ -163,6 +192,12 @@ class PageService {
 
 		$this->saveTranslations($page);
 
+		$parentId = array_get($data, 'parent_id', 0);
+
+		$this->managePageClosure(
+			$page,
+			$parentId);
+
 		$this->clearCache();
 
 		return $this;
@@ -170,7 +205,6 @@ class PageService {
 
 	/**
 	 * @param \Exolnet\Pages\Page $page
-	 * @param array               $data
 	 */
 	public function saveTranslations(Page $page)
 	{
@@ -194,9 +228,13 @@ class PageService {
 		return $this;
 	}
 
-	protected function validateUpdate(array $data)
+	/**
+	 * @param array $data
+	 * @param $rules
+	 */
+	protected function validateUpdate(array $data, $rules)
 	{
-		$validator = Validator::make($data, $this->rules());
+		$validator = Validator::make($data, $rules);
 
 		if ($validator->fails()) {
 			throw new PageValidationException(
@@ -205,6 +243,10 @@ class PageService {
 		}
 	}
 
+	/**
+	 * @param \Exolnet\Pages\Page $page
+	 * @param array $data
+	 */
 	protected function fillPage(Page $page, array $data)
 	{
 		$translations = (array)Arr::get($data, 'translation');
@@ -215,12 +257,31 @@ class PageService {
 		}
 	}
 
+	/**
+	 * @param \Exolnet\Pages\PageTranslation $translation
+	 * @param array $data
+	 */
 	protected function fillPageTranslation(PageTranslation $translation, array $data)
 	{
 		$translation
 			->setTitle($data['title'])
 			->setPermalink($data['permalink'])
 			->setContent($data['content']);
+	}
+
+	/**
+	 * @param \Exolnet\Pages\Page $page
+	 * @param $parentId
+	 */
+	protected function managePageClosure(Page $page, $parentId)
+	{
+		$parent = $this->pageRepository->findById($parentId);
+
+		if($parent) {
+			$page->moveAsChildOf($parent);
+		} else {
+			$page->makeRoot();
+		}
 	}
 
 	//==========================================================================
@@ -259,6 +320,9 @@ class PageService {
 	// Cache Management
 	//==========================================================================
 
+	/**
+	 * @return string
+	 */
 	public function getCacheKey()
 	{
 		return 'routes.pages';
@@ -315,6 +379,12 @@ class PageService {
 		return link_to($this->permalink($permalink), $title, $attributes, $secure);
 	}
 
+	/**
+	 * @param $permalink
+	 * @param array $attributes
+	 * @param null $secure
+	 * @return null|string
+	 */
 	public function link_to_with_title($permalink, $attributes = [], $secure = null)
 	{
 		$page = $this->findByPermalink($permalink, 'en');
