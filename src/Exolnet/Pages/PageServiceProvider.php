@@ -3,7 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
 
-class PagesServiceProvider extends IlluminateServiceProvider {
+class PageServiceProvider extends IlluminateServiceProvider {
 	public function boot()
 	{
 		$this->package('exolnet/laravel-pages', 'laravel-pages');
