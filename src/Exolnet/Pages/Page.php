@@ -204,6 +204,16 @@ class Page extends NodeUnordered implements PageInterface {
 	// Scopes
 	//==========================================================================
 
+	public function scopeHasTranslation($query, $key, $value, $locale = null, $op = '=')
+	{
+		$locale = $locale ?: \App::getLocale();
+
+		return $query->whereHas('translations', function ($q) use ($key, $value, $locale, $op) {
+			$q->where('locale', '=', $locale)
+				->where($key, $op, $value);
+		});
+	}
+
 	/**
 	 * Limit the query to page having a specified permalink.
 	 *
