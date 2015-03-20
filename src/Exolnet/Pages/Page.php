@@ -214,6 +214,8 @@ class Page extends NodeUnordered implements PageInterface {
 	 */
 	public function scopeHasPermalink($query, $permalink, $locale = null)
 	{
-		return $this->scopeHasTranslation($query, 'permalink', $permalink, $this->getLocale($locale));
+		$locale = $locale ?: \App::getLocale();
+		
+		return $this->scopeHasTranslation($query, 'permalink', $permalink, $locale);
 	}
 }
