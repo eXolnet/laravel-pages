@@ -5,6 +5,7 @@ use Illuminate\Cache\CacheManager;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr as Arr;
 use Exolnet\Core\Arr as ArrCore;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
 
 class PageService {
@@ -292,9 +293,10 @@ class PageService {
 	/**
 	 * Register all pages to the Laravel's router
 	 *
+	 * @param string|null $action
 	 * @param string|null $locale
 	 */
-	public function registerRoutes($locale = null)
+	public function registerRoutes($action = null, $locale = null)
 	{
 		// Prevent route registration when we're in a test environment or running artisan
 		if (app()->environment('test', 'testing') || app()->runningInConsole()) {
@@ -315,7 +317,7 @@ class PageService {
 
 		Route::get(
 			'{permalink}',
-			'PageController@show'
+			$action ?: '\Exolnet\Pages\PageController@show'
 		)->where('permalink', '(' . implode('|', $permalinks) . ')');
 	}
 
