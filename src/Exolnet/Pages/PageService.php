@@ -1,5 +1,6 @@
 <?php namespace Exolnet\Pages;
 
+use Config;
 use Illuminate\Cache\CacheManager;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr as Arr;
@@ -77,8 +78,8 @@ class PageService {
 	}
 
 	/**
-	 * Find a page by it's primary key.
-	 * @param $id
+	 * Find a page by its primary key.
+	 * @param int $id
 	 * @return \Exolnet\Pages\Page
 	 */
 	public function findById($id)
@@ -87,7 +88,7 @@ class PageService {
 	}
 
 	/**
-	 * Find a page by it's permalink in the current application's locale.
+	 * Find a page by its permalink in the current application locale.
 	 *
 	 * @param string $permalink
 	 * @param string $locale
@@ -95,6 +96,7 @@ class PageService {
 	 */
 	public function findByPermalink($permalink, $locale = null)
 	{
+		$locale = $locale ?: Config::get('laravel-pages::config.base_locale');
 		return $this->getCachedPages()->first(function($key, Page $page) use ($permalink, $locale) {
 			return $page->getTranslation($locale)->getPermalink() === $permalink;
 		});
@@ -116,12 +118,11 @@ class PageService {
 	//==========================================================================
 
 	/**
-	 * @return mixed
+	 * @return string
 	 */
 	public function getSupportedLocales()
 	{
-		// TODO-AD: Rendre ceci configurable <adeschambeault@exolnet.com>
-		return \Config::get('pages.supported_locales');
+		return Config::get('laravel-pages::config.supported_locales');
 	}
 
 	/**
@@ -145,7 +146,7 @@ class PageService {
 
 	/**
 	 * @param array $data
-	 * @return Page
+	 * @return \Exolnet\Pages\Page
 	 */
 	public function create(array $data)
 	{
@@ -172,7 +173,7 @@ class PageService {
 	}
 
 	/**
-	 * @param Page $page
+	 * @param \Exolnet\Pages\Page $page
 	 * @param array $data
 	 * @return $this
 	 */
@@ -271,7 +272,7 @@ class PageService {
 
 	/**
 	 * @param \Exolnet\Pages\Page $page
-	 * @param $parentId
+	 * @param int $parentId
 	 */
 	protected function managePageClosure(Page $page, $parentId)
 	{
@@ -290,6 +291,8 @@ class PageService {
 
 	/**
 	 * Register all pages to the Laravel's router
+	 *
+	 * @param string|null $locale
 	 */
 	public function registerRoutes($locale = null)
 	{
@@ -343,12 +346,12 @@ class PageService {
 	//==========================================================================
 
 	/**
-	 * @param        $permalink
-	 * @param null   $locale
-	 * @param string $from_locale
+	 * @param string   $permalink
+	 * @param string|null   $locale
+	 * @param string|null $from_locale
 	 * @return null|string
 	 */
-	public function permalink($permalink, $locale = null, $from_locale = 'en')
+	public function permalink($permalink, $locale = null, $from_locale = null)
 	{
 		$page   = $this->findByPermalink($permalink, $from_locale);
 		$locale = $locale ?: $this->app->getLocale();
@@ -357,9 +360,9 @@ class PageService {
 	}
 
 	/**
-	 * @param       $permalink
+	 * @param string $permalink
 	 * @param array $parameters
-	 * @param null  $secure
+	 * @param bool|null  $secure
 	 * @return string
 	 */
 	public function url($permalink, $parameters = [], $secure = null)
@@ -368,10 +371,10 @@ class PageService {
 	}
 
 	/**
-	 * @param       $permalink
+	 * @param string $permalink
 	 * @param null  $title
 	 * @param array $attributes
-	 * @param null  $secure
+	 * @param bool|null  $secure
 	 * @return string
 	 */
 	public function link_to($permalink, $title = null, $attributes = [], $secure = null)
@@ -380,9 +383,9 @@ class PageService {
 	}
 
 	/**
-	 * @param $permalink
+	 * @param string $permalink
 	 * @param array $attributes
-	 * @param null $secure
+	 * @param bool|null $secure
 	 * @return null|string
 	 */
 	public function link_to_with_title($permalink, $attributes = [], $secure = null)

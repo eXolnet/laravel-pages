@@ -4,6 +4,11 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
 
 class PagesServiceProvider extends IlluminateServiceProvider {
+	public function boot()
+	{
+		$this->package('exolnet/laravel-pages', 'laravel-pages');
+	}
+
 	/**
 	 * Register the service provider.
 	 */
@@ -21,7 +26,7 @@ class PagesServiceProvider extends IlluminateServiceProvider {
 	{
 		$this->app->bind('pages.repository', function(Application $app) {
 			return new PageRepository(
-				$app->make('filesystem')
+				$app->make('files')
 			);
 		});
 	}
@@ -34,7 +39,7 @@ class PagesServiceProvider extends IlluminateServiceProvider {
 		$this->app->bind('pages.service', function(Application $app) {
 			return new PageService(
 				$app->make('pages.repository'),
-				$app->make('cache.store'),
+				$app->make('cache'),
 				$app
 			);
 		});
