@@ -258,8 +258,10 @@ class Page extends NodeUnordered implements PageInterface, SearchResultItem {
 	public function getBreadcrumb()
 	{
 		$ret = [];
+		
+		$ret[] = 'Page';
+		
 		foreach ($this->getAncestors() as $ancestor) {
-
 			$ret[] = '<a href="'.page_url($ancestor->getPermalink()).'">'.$ancestor->getTitle().'</a>';
 		}
 
