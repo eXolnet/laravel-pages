@@ -268,7 +268,7 @@ class Page extends NodeUnordered implements PageInterface, SearchResultItem {
 
 	public function getDate()
 	{
-		return $this->created_at;
+		return null;
 	}
 
 	public function getLink()
