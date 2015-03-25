@@ -3,9 +3,25 @@
 use ClosureTree\Models\NodeUnordered;
 use Dimsav\Translatable\Translatable;
 use Illuminate\Database\Eloquent\SoftDeletingTrait;
+use Acufc\Models\SearchResultItem;
+use Acufc\Core\Traits\Searchable;
 
-class Page extends NodeUnordered implements PageInterface {
-	use SoftDeletingTrait, Translatable;
+class Page extends NodeUnordered implements PageInterface, SearchResultItem {
+	use SoftDeletingTrait, Translatable, Searchable;
+
+	/**
+	 * Searchable rules.
+	 *
+	 * @var array
+	 */
+	protected $searchable = [
+		'columns' => [
+			'page_translation.title' => 10,
+		],
+		'joins' => [
+			'page_translation' => ['page.id','page_translation.page_id'],
+		]
+	];
 
 	/**
 	 * The database table used by the model.
@@ -227,5 +243,36 @@ class Page extends NodeUnordered implements PageInterface {
 		$locale = $locale ?: \App::getLocale();
 		
 		return $this->scopeHasTranslation($query, 'permalink', $permalink, $locale);
+	}
+
+	//==========================================================================
+	// SearchResultItem
+	//==========================================================================
+	//public function getTitle();
+
+	public function getExcerpt()
+	{
+		return '';
+	}
+
+	public function getBreadcrumb()
+	{
+		$ret = [];
+		foreach ($this->getAncestors() as $ancestor) {
+
+			$ret[] = '<a href="'.page_url($ancestor->getPermalink()).'">'.$ancestor->getTitle().'</a>';
+		}
+
+		return $ret;
+	}
+
+	public function getDate()
+	{
+		return $this->created_at;
+	}
+
+	public function getLink()
+	{
+		return url($this->translate('fr')->getPermalink());
 	}
 }
