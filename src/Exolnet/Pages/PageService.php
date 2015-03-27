@@ -227,6 +227,8 @@ class PageService {
 			->destroyPage($page)
 			->destroyPageContent($page);
 
+		$this->clearCache();
+
 		return $this;
 	}
 
